@@ -2,16 +2,19 @@ import * as http from 'http'
 import * as http2 from 'http2'
 import * as https from 'https'
 import * as LightMyRequest from 'light-my-request'
+import { ConstraintStrategy, HTTPVersion } from 'find-my-way'
 
 import { FastifyRequest, RequestGenericInterface } from './types/request'
 import { RawServerBase, RawServerDefault, RawRequestDefaultExpression, RawReplyDefaultExpression } from './types/utils'
 import { FastifyLoggerInstance, FastifyLoggerOptions } from './types/logger'
 import { FastifyInstance } from './types/instance'
 import { FastifyServerFactory } from './types/serverFactory'
-import * as ajv from 'ajv'
+import { Options as AjvOptions } from '@fastify/ajv-compiler'
 import { FastifyError } from 'fastify-error'
 import { FastifyReply } from './types/reply'
 import { FastifySchemaValidationError } from './types/schema'
+import { ConstructorAction, ProtoAction } from "./types/content-type-parser";
+import { Socket } from 'net'
 
 /**
  * Fastify factory function for the standard fastify http, https, or http2 server instance.
@@ -69,6 +72,18 @@ export type FastifyHttpsOptions<
 > = FastifyServerOptions<Server, Logger> & {
   https: https.ServerOptions
 }
+
+type FindMyWayVersion<RawServer extends RawServerBase> = RawServer extends http.Server ? HTTPVersion.V1 : HTTPVersion.V2
+
+export interface ConnectionError extends Error {
+  code: string,
+  bytesParsed: number,
+  rawPacket: {
+    type: string,
+    data: number[]
+  }
+}
+
 /**
  * Options for a fastify server instance. Utilizes conditional logic on the generic server parameter to enforce certain https and http2
  */
@@ -84,8 +99,8 @@ export type FastifyServerOptions<
   maxParamLength?: number,
   disableRequestLogging?: boolean,
   exposeHeadRoutes?: boolean,
-  onProtoPoisoning?: 'error' | 'remove' | 'ignore',
-  onConstructorPoisoning?: 'error' | 'remove' | 'ignore',
+  onProtoPoisoning?: ProtoAction,
+  onConstructorPoisoning?: ConstructorAction,
   logger?: boolean | FastifyLoggerOptions<RawServer> | Logger,
   serverFactory?: FastifyServerFactory<RawServer>,
   caseSensitive?: boolean,
@@ -94,6 +109,9 @@ export type FastifyServerOptions<
   genReqId?: <RequestGeneric extends RequestGenericInterface = RequestGenericInterface>(req: FastifyRequest<RequestGeneric, RawServer, RawRequestDefaultExpression<RawServer>>) => string,
   trustProxy?: boolean | string | string[] | number | TrustProxyFunction,
   querystringParser?: (str: string) => { [key: string]: unknown },
+  /**
+   * @deprecated Prefer using the `constraints.version` property
+   */
   versioning?: {
     storage(): {
       get(version: string): string | null,
@@ -103,9 +121,12 @@ export type FastifyServerOptions<
     },
     deriveVersion<Context>(req: Object, ctx?: Context): string // not a fan of using Object here. Also what is Context? Can either of these be better defined?
   },
+  constraints?: {
+    [name: string]: ConstraintStrategy<FindMyWayVersion<RawServer>>,
+  },
   return503OnClosing?: boolean,
   ajv?: {
-    customOptions?: ajv.Options,
+    customOptions?: AjvOptions,
     plugins?: Function[]
   },
   frameworkErrors?: <RequestGeneric extends RequestGenericInterface = RequestGenericInterface>(
@@ -114,7 +135,11 @@ export type FastifyServerOptions<
     res: FastifyReply<RawServer, RawRequestDefaultExpression<RawServer>, RawReplyDefaultExpression<RawServer>>
   ) => void,
   rewriteUrl?: (req: RawRequestDefaultExpression<RawServer>) => string,
-  schemaErrorFormatter?: (errors: FastifySchemaValidationError[], dataVar: string) => Error
+  schemaErrorFormatter?: (errors: FastifySchemaValidationError[], dataVar: string) => Error,
+  /**
+   * listener to error events emitted by client connections
+   */
+  clientErrorHandler?: (error: ConnectionError, socket: Socket) => void
 }
 
 type TrustProxyFunction = (address: string, hop: number) => boolean
@@ -139,10 +164,10 @@ export { FastifyReply } from './types/reply'
 export { FastifyPluginCallback, FastifyPluginAsync, FastifyPluginOptions, FastifyPlugin } from './types/plugin'
 export { FastifyInstance } from './types/instance'
 export { FastifyLoggerOptions, FastifyLoggerInstance, FastifyLogFn, LogLevel } from './types/logger'
-export { FastifyContext } from './types/context'
+export { FastifyContext, FastifyContextConfig } from './types/context'
 export { RouteHandler, RouteHandlerMethod, RouteOptions, RouteShorthandMethod, RouteShorthandOptions, RouteShorthandOptionsWithHandler } from './types/route'
 export * from './types/register'
-export { FastifyBodyParser, FastifyContentTypeParser, AddContentTypeParser, hasContentTypeParser } from './types/content-type-parser'
+export { FastifyBodyParser, FastifyContentTypeParser, AddContentTypeParser, hasContentTypeParser, getDefaultJsonParser, ProtoAction, ConstructorAction } from './types/content-type-parser'
 export { FastifyError } from 'fastify-error'
 export { FastifySchema, FastifySchemaCompiler } from './types/schema'
 export { HTTPMethods, RawServerBase, RawRequestDefaultExpression, RawReplyDefaultExpression, RawServerDefault, ContextConfigDefault, RequestBodyDefault, RequestQuerystringDefault, RequestParamsDefault, RequestHeadersDefault } from './types/utils'

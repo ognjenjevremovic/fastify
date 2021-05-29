@@ -9,10 +9,11 @@ Request is a core Fastify object containing the following fields:
 - `headers` - the headers
 - `raw` - the incoming HTTP request from Node core
 - `req` *(deprecated, use `.raw` instead)* - the incoming HTTP request from Node core
+- `server` - The Fastify server instance, scoped to the current [encapsulation context](Encapsulation.md)
 - `id` - the request id
 - `log` - the logger instance of the incoming request
 - `ip` - the IP address of the incoming request
-- `ips` - an array of the IP addresses in the `X-Forwarded-For` header of the incoming request (only when the [`trustProxy`](Server.md#factory-trust-proxy) option is enabled)
+- `ips` - an array of the IP addresses, ordered from closest to furthest, in the `X-Forwarded-For` header of the incoming request (only when the [`trustProxy`](Server.md#factory-trust-proxy) option is enabled)
 - `hostname` - the hostname of the incoming request (derived from `X-Forwarded-Host` header when the [`trustProxy`](Server.md#factory-trust-proxy) option is enabled)
 - `protocol` - the protocol of the incoming request (`https` or `http`)
 - `method` - the method of the incoming request
@@ -31,6 +32,7 @@ fastify.post('/:params', options, function (request, reply) {
   console.log(request.params)
   console.log(request.headers)
   console.log(request.raw)
+  console.log(request.server)
   console.log(request.id)
   console.log(request.ip)
   console.log(request.ips)

@@ -16,7 +16,7 @@ You have two ways to declare a route with Fastify, the shorthand method and the 
   - [Custom Log Level](#custom-log-level)
   - [Custom Log Serializer](#custom-log-serializer)
 - [Route handler configuration](#routes-config)
-- [Route's Versioning](#version)
+- [Route constraints](#constraints)
 
 <a name="full-declaration"></a>
 ### Full declaration
@@ -26,16 +26,15 @@ fastify.route(options)
 ```
 
 <a name="options"></a>
-### Routes option
+### Routes options
 
 * `method`: currently it supports `'DELETE'`, `'GET'`, `'HEAD'`, `'PATCH'`, `'POST'`, `'PUT'` and `'OPTIONS'`. It could also be an array of methods.
-* `url`: the path of the url to match this route (alias: `path`).
+* `url`: the path of the URL to match this route (alias: `path`).
 * `schema`: an object containing the schemas for the request and response.
 They need to be in
   [JSON Schema](https://json-schema.org/) format, check [here](Validation-and-Serialization.md) for more info.
 
-  * `body`: validates the body of the request if it is a POST or a
-    PUT.
+  * `body`: validates the body of the request if it is a POST, PUT, or PATCH method.
   * `querystring` or `query`: validates the querystring. This can be a complete JSON
   Schema object, with the property `type` of `object` and `properties` object of parameters, or
   simply the values of what would be contained in the `properties` object as shown below.
@@ -152,8 +151,8 @@ fastify.get('/', opts)
 
 <a name="url-building"></a>
 ### Url building
-Fastify supports both static and dynamic urls.<br>
-To register a **parametric** path, use the *colon* before the parameter name. For **wildcard** use the *star*.
+Fastify supports both static and dynamic URLs.<br>
+To register a **parametric** path, use the *colon* before the parameter name. For **wildcard**, use the *star*.
 *Remember that static routes are always checked before parametric and wildcard.*
 
 ```js
@@ -171,20 +170,25 @@ Regular expression routes are supported as well, but pay attention, RegExp are v
 fastify.get('/example/:file(^\\d+).png', (request, reply) => {})
 ```
 
-It's possible to define more than one parameter within the same couple of slash ("/"). Such as:
+It is possible to define more than one parameter within the same couple of slash ("/"). Such as:
 ```js
 fastify.get('/example/near/:lat-:lng/radius/:r', (request, reply) => {})
 ```
 *Remember in this case to use the dash ("-") as parameters separator.*
 
-Finally it's possible to have multiple parameters with RegExp.
+Finally it is possible to have multiple parameters with RegExp.
 ```js
 fastify.get('/example/at/:hour(^\\d{2})h:minute(^\\d{2})m', (request, reply) => {})
 ```
-In this case as parameter separator it's possible to use whatever character is not matched by the regular expression.
+In this case as parameter separator it is possible to use whatever character is not matched by the regular expression.
 
-Having a route with multiple parameters may affect negatively the performance, so prefer single parameter approach whenever possible, especially on routes which are on the hot path of your application.
-If you are interested in how we handle the routing, checkout [find-my-way](https://github.com/delvedor/find-my-way).
+Having a route with multiple parameters may affect negatively the performance, so prefer single parameter approach whenever possible, especially on routes that are on the hot path of your application.
+If you are interested in how we handle the routing, check out [find-my-way](https://github.com/delvedor/find-my-way).
+
+If you want a path containing a colon without declaring a parameter, use a double colon. For example:
+```js
+fastify.post('/name::verb') // will be interpreted as /name:verb
+```
 
 <a name="async-await"></a>
 ### Async Await
@@ -197,7 +201,7 @@ fastify.get('/', options, async function (request, reply) {
 })
 ```
 
-As you can see we are not calling `reply.send` to send back the data to the user. You just need to return the body and you are done!
+As you can see, we are not calling `reply.send` to send back the data to the user. You just need to return the body and you are done!
 
 If you need it you can also send back the data to the user with `reply.send`.
 ```js
@@ -233,19 +237,19 @@ fastify.get('/', options, async function (request, reply) {
 
 **Warning:**
 * When using both `return value` and `reply.send(value)` at the same time, the first one that happens takes precedence, the second value will be discarded, and a *warn* log will also be emitted because you tried to send a response twice.
-* You can't return `undefined`. For more details read [promise-resolution](#promise-resolution).
+* You cannot return `undefined`. For more details read [promise-resolution](#promise-resolution).
 
 <a name="promise-resolution"></a>
 ### Promise resolution
 
-If your handler is an `async` function or returns a promise, you should be aware of a special behaviour which is necessary to support the callback and promise control-flow. If the handler's promise is resolved with `undefined`, it will be ignored causing the request to hang and an *error* log to be emitted.
+If your handler is an `async` function or returns a promise, you should be aware of a special behavior that is necessary to support the callback and promise control-flow. If the handler's promise is resolved with `undefined`, it will be ignored causing the request to hang and an *error* log to be emitted.
 
-1. If you want to use `async/await` or promises but respond a value with `reply.send`:
-    - **Don't** `return` any value.
-    - **Don't** forget to call `reply.send`.
+1. If you want to use `async/await` or promises but return a value with `reply.send`:
+    - **Do not** `return` any value.
+    - **Do not** forget to call `reply.send`.
 2. If you want to use `async/await` or promises:
-    - **Don't** use `reply.send`.
-    - **Don't** return `undefined`.
+    - **Do not** use `reply.send`.
+    - **Do not** return `undefined`.
 
 In this way, we can support both `callback-style` and `async-await`, with the minimum trade-off. In spite of so much freedom we highly recommend to go with only one style because error handling should be handled in a consistent way within your application.
 
@@ -253,8 +257,8 @@ In this way, we can support both `callback-style` and `async-await`, with the mi
 
 <a name="route-prefixing"></a>
 ### Route Prefixing
-Sometimes you need to maintain two or more different versions of the same api, a classic approach is to prefix all the routes with the api version number, `/v1/user` for example.
-Fastify offers you a fast and smart way to create different version of the same api without changing all the route names by hand, *route prefixing*. Let's see how it works:
+Sometimes you need to maintain two or more different versions of the same API; a classic approach is to prefix all the routes with the API version number, `/v1/user` for example.
+Fastify offers you a fast and smart way to create different versions of the same API without changing all the route names by hand, *route prefixing*. Let's see how it works:
 
 ```js
 // server.js
@@ -288,21 +292,21 @@ Now your clients will have access to the following routes:
 - `/v2/user`
 
 You can do this as many times as you want, it works also for nested `register` and routes parameter are supported as well.
-Be aware that if you use [`fastify-plugin`](https://github.com/fastify/fastify-plugin) this option won't work.
+Be aware that if you use [`fastify-plugin`](https://github.com/fastify/fastify-plugin) this option will not work.
 
 #### Handling of / route inside prefixed plugins
 
-The `/` route has a different behavior depending if the prefix ends with
+The `/` route has a different behavior depending on if the prefix ends with
 `/` or not. As an example, if we consider a prefix `/something/`,
 adding a `/` route will only match `/something/`. If we consider a
 prefix `/something`, adding a `/` route will match both `/something` 
 and `/something/`.
 
-See the `prefixTrailingSlash` route option above to change this behaviour.
+See the `prefixTrailingSlash` route option above to change this behavior.
 
 <a name="custom-log-level"></a>
 ### Custom Log Level
-It could happen that you need different log levels in your routes, Fastify achieves this in a very straightforward way.<br/>
+It could happen that you need different log levels in your routes; Fastify achieves this in a very straightforward way.<br/>
 You just need to pass the option `logLevel` to the plugin option or the route option with the [value](https://github.com/pinojs/pino/blob/master/docs/api.md#level-string) that you need.
 
 Be aware that if you set the `logLevel` at plugin level, also the [`setNotFoundHandler`](Server.md#setnotfoundhandler) and [`setErrorHandler`](Server.md#seterrorhandler) will be affected.
@@ -403,19 +407,22 @@ fastify.get('/it', { config: { output: 'ciao mondo!' } }, handler)
 fastify.listen(3000)
 ```
 
-<a name="version"></a>
-### Version
+<a name="constraints"></a>
+### Constraints
 
-#### Default
-If needed you can provide a version option, which will allow you to declare multiple versions of the same route. The versioning should follow the [semver](https://semver.org/) specification.<br/>
-Fastify will automatically detect the `Accept-Version` header and route the request accordingly (advanced ranges and pre-releases currently are not supported).<br/>
+Fastify supports constraining routes to match only certain requests based on some property of the request, like the `Host` header, or any other value via [`find-my-way`](https://github.com/delvedor/find-my-way) constraints. Constraints are specified in the `constraints` property of the route options. Fastify has two built-in constraints ready for use: the `version` constraint and the `host` constraint, and you can add your own custom constraint strategies to inspect other parts of a request to decide if a route should be executed for a request.
+
+#### Version Constraints
+
+You can provide a `version` key in the `constraints` option to a route. Versioned routes allow you to declare multiple handlers for the same HTTP route path, which will then be matched according to each request's `Accept-Version` header. The `Accept-Version` header value should follow the [semver](http://semver.org/) specification, and routes should be declared with exact semver versions for matching.<br/>
+Fastify will require a request `Accept-Version` header to be set if the route has a version set, and will prefer a versioned route to a non-versioned route for the same path. Advanced version ranges and pre-releases currently are not supported.<br/>
 *Be aware that using this feature will cause a degradation of the overall performances of the router.*
 
 ```js
 fastify.route({
   method: 'GET',
   url: '/',
-  version: '1.2.0',
+  { constraints: { version: '1.2.0'} },
   handler: function (request, reply) {
     reply.send({ hello: 'world' })
   }
@@ -435,8 +442,8 @@ fastify.inject({
 > ## ⚠  Security Notice
 > Remember to set a [`Vary`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Vary) header in your
 > responses with the value you are using for defining the versioning (e.g.: `'Accept-Version'`),
-> to prevent cache poisoning attacks. You can also configure this as part your Proxy/CDN.
-> 
+> to prevent cache poisoning attacks. You can also configure this as part of your Proxy/CDN.
+>
 > ```js
 > const append = require('vary').append
 > fastify.addHook('onSend', async (req, reply) => {
@@ -453,5 +460,52 @@ fastify.inject({
 If you declare multiple versions with the same major or minor, Fastify will always choose the highest compatible with the `Accept-Version` header value.<br/>
 If the request will not have the `Accept-Version` header, a 404 error will be returned.
 
-#### Custom
-It's possible to define a custom versioning logic. This can be done through the [`versioning`](Server.md#versioning) configuration, when creating a fastify server instance.
+It is possible to define a custom version matching logic. This can be done through the [`constraints`](Server.md#constraints) configuration when creating a Fastify server instance.
+
+#### Host Constraints
+
+You can provide a `host` key in the `constraints` route option for to limit that route to only be matched for certain values of the request `Host` header. `host` constraint values can be specified as strings for exact matches or RegExps for arbitrary host matching.
+
+```js
+fastify.route({
+  method: 'GET',
+  url: '/',
+  { constraints: { host: 'auth.fastify.io' } },
+  handler: function (request, reply) {
+    reply.send('hello world from auth.fastify.io')
+  }
+})
+
+fastify.inject({
+  method: 'GET',
+  url: '/',
+  headers: {
+    'Host': 'example.com'
+  }
+}, (err, res) => {
+  // 404 because the host doesn't match the constraint
+})
+
+fastify.inject({
+  method: 'GET',
+  url: '/',
+  headers: {
+    'Host': 'auth.fastify.io'
+  }
+}, (err, res) => {
+  // => 'hello world from auth.fastify.io'
+})
+```
+
+RegExp `host` constraints can also be specified allowing constraining to hosts matching wildcard subdomains (or any other pattern):
+
+```js
+fastify.route({
+  method: 'GET',
+  url: '/',
+  { constraints: { host: /.*\.fastify\.io/ } }, // will match any subdomain of fastify.io
+  handler: function (request, reply) {
+    reply.send('hello world from ' + request.headers.host)
+  }
+})
+```

@@ -43,6 +43,7 @@ const { buildRouting, validateBodyLimitOption } = require('./lib/route')
 const build404 = require('./lib/fourOhFour')
 const getSecuredInitialConfig = require('./lib/initialConfigValidation')
 const override = require('./lib/pluginOverride')
+const warning = require('./lib/warnings')
 const { defaultInitOptions } = getSecuredInitialConfig
 
 const {
@@ -112,10 +113,6 @@ function fastify (options) {
     throw new Error(`ajv.plugins option should be an array, instead got '${typeof ajvOptions.plugins}'`)
   }
 
-  ajvOptions.plugins = ajvOptions.plugins.map(plugin => {
-    return Array.isArray(plugin) ? plugin : [plugin]
-  })
-
   // Instance Fastify components
   const { logger, hasLogger } = createLogger(options)
 
@@ -134,15 +131,34 @@ function fastify (options) {
 
   const initialConfig = getSecuredInitialConfig(options)
 
+  let constraints = options.constraints
+  if (options.versioning) {
+    warning.emit('FSTDEP009')
+    constraints = {
+      ...constraints,
+      version: {
+        name: 'version',
+        mustMatchWhenDerived: true,
+        storage: options.versioning.storage,
+        deriveConstraint: options.versioning.deriveVersion,
+        validate (value) {
+          if (typeof value !== 'string') {
+            throw new Error('Version constraint should be a string.')
+          }
+        }
+      }
+    }
+  }
+
   // Default router
   const router = buildRouting({
     config: {
       defaultRoute: defaultRoute,
       onBadUrl: onBadUrl,
+      constraints: constraints,
       ignoreTrailingSlash: options.ignoreTrailingSlash || defaultInitOptions.ignoreTrailingSlash,
       maxParamLength: options.maxParamLength || defaultInitOptions.maxParamLength,
-      caseSensitive: options.caseSensitive,
-      versioning: options.versioning
+      caseSensitive: options.caseSensitive
     }
   })
 
@@ -248,6 +264,7 @@ function fastify (options) {
     ready: null,
     onClose: null,
     close: null,
+    printPlugins: null,
     // http server
     listen: listen,
     server: server,
@@ -268,6 +285,9 @@ function fastify (options) {
     // Set fastify initial configuration options read-only object
     initialConfig
   }
+
+  fastify[kReply].prototype.server = fastify
+  fastify[kRequest].prototype.server = fastify
 
   Object.defineProperties(fastify, {
     pluginName: {
@@ -331,6 +351,8 @@ function fastify (options) {
   avvio.on('start', () => (fastify[kState].started = true))
   fastify[kAvvioBoot] = fastify.ready // the avvio ready function
   fastify.ready = ready // overwrite the avvio ready function
+  fastify.printPlugins = avvio.prettyPrint.bind(avvio)
+
   // cache the closing value, since we are checking it in an hot path
   avvio.once('preReady', () => {
     fastify.onClose((instance, done) => {
@@ -517,7 +539,7 @@ function fastify (options) {
 
     // Most devs do not know what to do with this error.
     // In the vast majority of cases, it's a network error and/or some
-    // config issue on the the load balancer side.
+    // config issue on the load balancer side.
     this.log.trace({ err }, 'client error')
 
     // If the socket is not writable, there is no reason to try to send data.
